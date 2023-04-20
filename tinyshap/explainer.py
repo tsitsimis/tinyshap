@@ -1,7 +1,18 @@
-from typing import Tuple
+import math
+import sys
+from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
+from loguru import logger
+from sklearn.linear_model import LinearRegression
+
+logger.add(sys.stderr, format="{time} {level} {message}", filter="explainer", level="INFO")
+
+
+def shap_kernel(coalition: List[int], dim: int) -> float:
+    size = sum(coalition)
+    return (dim - 1) / (math.comb(dim, size) * size * (dim - size))
 
 
 class SHAPExplainer:
@@ -18,69 +29,71 @@ class SHAPExplainer:
         """
         self.model = model
         self.X = X
+
+        dim = X.shape[1]
+        if n_samples > 2**dim:
+            n_samples = 2**dim
+            logger.warning(
+                f"n_samples is reduced to {n_samples} because it was bigger than all possible combinations {2**dim}"
+            )
         self.n_samples = n_samples
 
-    def _generate_feature_combinations(
-        self, x_test: np.ndarray, feature_name: str
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def _generate_coalitions(self) -> pd.DataFrame:
         """
-        Generates random coalitions of features of a test sample `x_test` to estimate Shapley values
-        for feature `feature_name`
-
-        Returns 2 pandas DataFrames. The first has the values of x_test in the feature_name column and the other
-        has a random value from the `self.X`
+        Generates random coalitions (array of 0s and 1s)
         """
         dim = self.X.shape[1]
 
-        # Each feature's value either stays as is, or masked with a random value
-        # This create a (n_iter, dim-1) DataFrame with 1 and 0. 1 means the feature value remains intact,
-        # 0 means it is replaced with a random value
-        mask_df = pd.DataFrame(
-            np.random.choice([0, 1], size=(self.n_samples, dim - 1)), columns=self.X.drop(feature_name, axis=1).columns
-        ).drop_duplicates()
+        random_numbers = np.random.choice(2**dim, size=self.n_samples, replace=False).tolist()
+        binary_numbers = [np.binary_repr(x, width=dim) for x in random_numbers]
+        binary_array = np.array([list(x) for x in binary_numbers], dtype=int)
 
-        mask_df_with_feature = mask_df.copy()
-        mask_df_with_feature[feature_name] = 1
-        mask_df_with_feature = mask_df_with_feature[self.X.columns]
+        coalitions = pd.DataFrame(binary_array, columns=self.X.columns)
 
-        mask_df_without_feature = mask_df.copy()
-        mask_df_without_feature[feature_name] = 0
-        mask_df_without_feature = mask_df_without_feature[self.X.columns]
+        # Coalitions where all values are random or exactly equal to the test sample
+        # don't provide any meaningful information
+        coalitions = coalitions.loc[(coalitions.sum(axis=1) > 0) & (coalitions.sum(axis=1) < dim)]
+        return coalitions
 
-        # Random values are sampled from the dataset
-        X_samples = self.X.sample(mask_df.shape[0], replace=True)
-
-        combinations_with_feature = pd.DataFrame(
-            np.where(mask_df_with_feature, x_test, X_samples.values), columns=self.X.columns
-        )
-        combinations_without_feature = pd.DataFrame(
-            np.where(mask_df_without_feature, x_test, X_samples.values), columns=self.X.columns
-        )
-        return combinations_with_feature, combinations_without_feature
-
-    def _explain_single_feature(self, x_test: np.ndarray, feature_name: str) -> float:
+    def _get_feature_values(self, coalitions: pd.DataFrame, x_test: np.ndarray) -> pd.DataFrame:
         """
-        Calculates Shapley values of a single sample and feature
+        Converts coalitions to features by replacing 1s to actual feature values and 0s to random values
         """
-        assert x_test.ndim == 1
+        # Sample with replacement in case the number of samples exceeds the number of rows
+        X_samples = self.X.sample(coalitions.shape[0], replace=True)
+        feature_values = pd.DataFrame(np.where(coalitions, x_test, X_samples.values), columns=self.X.columns)
+        return feature_values
 
-        combinations_with_feature, combinations_without_feature = self._generate_feature_combinations(
-            x_test=x_test, feature_name=feature_name
-        )
-        marginal_contributions = self.model(combinations_with_feature) - self.model(combinations_without_feature)
-        return np.mean(marginal_contributions)
-
-    def _explain_all_features(self, x_test: np.ndarray) -> np.ndarray:
+    def _get_coalition_weights(self, coalitions: pd.DataFrame) -> np.ndarray:
         """
-        Calculates Shapley values of all features of a single sample
+        Calculates the weight of each coalition
+        """
+        dim = self.X.shape[1]
+
+        weights = coalitions.apply(lambda row: shap_kernel(coalition=row.tolist(), dim=dim), axis=1)
+        weights = weights.values
+        return weights
+
+    def _explain_sample(self, x_test: np.ndarray) -> pd.Series:
+        """
+        Calculates SHAP values of a single sample using approximate KernelSHAP
         """
         assert x_test.ndim == 1
-        return np.array([self._explain_single_feature(x_test, feature_name=col) for col in self.X.columns])
+
+        coalitions = self._generate_coalitions()
+        feature_values = self._get_feature_values(coalitions, x_test)
+        predictions = self.model(feature_values)
+        weights = self._get_coalition_weights(coalitions)
+
+        lr = LinearRegression()
+        lr.fit(coalitions, predictions, sample_weight=weights)
+        shap_values = pd.Series(data=lr.coef_, index=self.X.columns)
+        shap_values["avg_prediction"] = lr.intercept_
+        return shap_values
 
     def shap_values(self, X: pd.DataFrame) -> pd.DataFrame:
         """
-        Calculates Shapley values of multiple samples in `X`
+        Calculates SHAP values of multiple samples in `X`
         """
-        shap_values_df = X.apply(self._explain_all_features, axis=1).apply(pd.Series)
-        shap_values_df.columns = self.X.columns
-        return shap_values_df
+        shap_values = X.apply(self._explain_sample, axis=1)
+        return shap_values

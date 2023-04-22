@@ -24,27 +24,23 @@ class SHAPExplainer:
             any other function
         X : pandas.DataFrame
             Dataset for sampling random samples when estimating the SHAP values
-        n_iter : int
+        n_samples : int
             Number of random samples to estimate SHAP values
         """
         self.model = model
         self.X = X
-
-        dim = X.shape[1]
-        if n_samples > 2**dim:
-            n_samples = 2**dim
-            logger.warning(
-                f"n_samples is reduced to {n_samples} because it was bigger than all possible combinations {2**dim}"
-            )
         self.n_samples = n_samples
 
     def _generate_coalitions(self) -> pd.DataFrame:
         """
         Generates random coalitions (array of 0s and 1s)
+
+        It first generates random numbers between 0 and 2**dim-1, converts them to
+        binary representation and then to binary arrays
         """
         dim = self.X.shape[1]
 
-        random_numbers = np.random.choice(2**dim, size=self.n_samples, replace=False).tolist()
+        random_numbers = np.random.choice(2**dim, size=self.n_samples, replace=True).tolist()
         binary_numbers = [np.binary_repr(x, width=dim) for x in random_numbers]
         binary_array = np.array([list(x) for x in binary_numbers], dtype=int)
 

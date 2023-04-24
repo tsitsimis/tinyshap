@@ -2,20 +2,21 @@
 requires = ["setuptools", "wheel"]
 
 [project]
-name = 'microshap'
+name = 'tinyshap'
 dynamic = [
   'version'
 ]
-description = 'Minimal implementation of Shapley values algorithm'
+description = 'Minimal implementation of approximate Kernel SHAP algorithm'
 readme = 'README.md'
 authors = [
-  { name = 'The Pandas Development Team', email='pandas-dev@python.org' },
+  { name = 'Theodore Tsitsimis', email='th.tsitsimis@gmail.com' },
 ]
 license = {file = 'LICENSE'}
 requires-python = '>=3.8'
 dependencies = [
-  "numpy>=1.20.3",
-  "pandas>=1.5.3",
+  "pandas>=2.0.0",
+  "scikit-learn>=1.2.2",
+  "loguru>=0.7.0",
 ]
 classifiers = [
     'Development Status :: 3 - Alpha',

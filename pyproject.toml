@@ -32,6 +32,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
+[tool.setuptools]
+py-modules = ["tinyshap"]
+
 [tool.black]
 line-length = 120
 target-version = ['py37', 'py38']

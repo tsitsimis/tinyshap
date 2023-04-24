@@ -3,9 +3,7 @@ requires = ["setuptools", "wheel"]
 
 [project]
 name = 'tinyshap'
-dynamic = [
-  'version'
-]
+version = '0.0.2'
 description = 'Minimal implementation of approximate Kernel SHAP algorithm'
 readme = 'README.md'
 authors = [
@@ -31,6 +29,9 @@ classifiers = [
     'Programming Language :: Python :: 3.11',
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
+
+[project.urls]
+"Homepage" = "https://github.com/tsitsimis/tinyshap"
 
 [tool.setuptools]
 py-modules = ["tinyshap"]

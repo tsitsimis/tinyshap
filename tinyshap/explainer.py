@@ -16,7 +16,7 @@ def shap_kernel(coalition: List[int], dim: int) -> float:
 
 
 class SHAPExplainer:
-    def __init__(self, model: callable, X: pd.DataFrame, n_samples: int = 1000) -> None:
+    def __init__(self, model: callable, X: pd.DataFrame, n_samples: int = None) -> None:
         """
         model : callable
             A callable that accepts a numpy Array or pandas Dataframe with features and returns predictions
@@ -29,7 +29,11 @@ class SHAPExplainer:
         """
         self.model = model
         self.X = X
-        self.n_samples = n_samples
+
+        if n_samples is None:
+            self.n_samples = 2 ** self.X[1]
+        else:
+            self.n_samples = n_samples
 
     def _generate_coalitions(self) -> pd.DataFrame:
         """
@@ -81,10 +85,12 @@ class SHAPExplainer:
         predictions = self.model(feature_values)
         weights = self._get_coalition_weights(coalitions)
 
-        lr = LinearRegression()
-        lr.fit(coalitions, predictions, sample_weight=weights)
+        # y_pred_mean = self.model(self.X.mean().to_frame().T.values)[0]
+
+        lr = LinearRegression(fit_intercept=True)
+        lr.fit(coalitions, predictions, sample_weight=weights)  #  - y_pred_mean
         shap_values = pd.Series(data=lr.coef_, index=self.X.columns)
-        shap_values["avg_prediction"] = lr.intercept_
+        shap_values["avg_prediction"] = lr.intercept_  # y_pred_mean
         return shap_values
 
     def shap_values(self, X: pd.DataFrame) -> pd.DataFrame:

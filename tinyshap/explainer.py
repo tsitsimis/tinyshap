@@ -31,7 +31,7 @@ class SHAPExplainer:
         self.X = X
 
         if n_samples is None:
-            self.n_samples = 2 ** self.X[1]
+            self.n_samples = 2 ** self.X.shape[1]
         else:
             self.n_samples = n_samples
 

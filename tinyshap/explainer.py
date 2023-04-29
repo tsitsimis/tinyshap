@@ -4,10 +4,7 @@ from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
-from loguru import logger
 from sklearn.linear_model import LinearRegression
-
-logger.add(sys.stderr, format="{time} {level} {message}", filter="explainer", level="INFO")
 
 
 def shap_kernel(coalition: List[int], dim: int) -> float:

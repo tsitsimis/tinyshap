@@ -3,8 +3,6 @@
 
 A minimal implementation of the SHAP algorithm using the KernelSHAP method. In less then 100 lines of code, this repo serves as an educational resource to understand how SHAP works without all the complexities of a production-level package.
 
-Note: For reliable and more flexible estimation of SHAP values the user should use [shap](https://github.com/slundberg/shap) or a similar package.
-
 ## Installation
 ```bash
 pip install tinyshap

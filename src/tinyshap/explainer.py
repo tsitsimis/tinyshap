@@ -81,12 +81,10 @@ class SHAPExplainer:
         predictions = self.model(feature_values)
         weights = self._get_coalition_weights(coalitions)
 
-        # y_pred_mean = self.model(self.X.mean().to_frame().T.values)[0]
-
         lr = LinearRegression(fit_intercept=True)
-        lr.fit(coalitions, predictions, sample_weight=weights)  #  - y_pred_mean
+        lr.fit(coalitions, predictions, sample_weight=weights)
         shap_values = pd.Series(data=lr.coef_, index=self.X.columns)
-        shap_values["avg_prediction"] = lr.intercept_  # y_pred_mean
+        shap_values["avg_prediction"] = lr.intercept_
         return shap_values
 
     def shap_values(self, X: pd.DataFrame) -> pd.DataFrame:

@@ -59,4 +59,15 @@ def test__explain_sample():
 
     assert type(shap_values) == pd.Series
     assert shap_values.shape[0] == X.shape[1] + 1  # features + avg prediction
-    assert np.allclose(float(shap_values.sum()), y_test[0], rtol=0.01)
+    assert np.allclose(
+        float(shap_values.sum()), explainer.model(pd.DataFrame(x_test.reshape(1, -1), columns=X.columns)), rtol=0.01
+    )
+
+
+def test_shap_values():
+    explainer = SHAPExplainer(model.predict, X=X_train_summary)
+    shap_values = explainer.shap_values(X_test)
+
+    assert shap_values.shape[0] == X_test.shape[0]
+    assert shap_values.shape[1] == X_test.shape[1] + 1
+    assert np.allclose(shap_values.sum(axis=1).values, explainer.model(X_test), rtol=0.01)

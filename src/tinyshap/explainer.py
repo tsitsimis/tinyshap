@@ -3,7 +3,7 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
+from constrainedlr import ConstrainedLinearRegression
 
 
 def shap_kernel(coalition: List[int], dim: int) -> float:
@@ -76,13 +76,15 @@ class SHAPExplainer:
         """
         assert x_test.ndim == 1
 
+        model_prediction = self.model(pd.DataFrame(x_test.reshape(1, -1), columns=self.X.columns))
+
         coalitions = self._generate_coalitions()
         feature_values = self._get_feature_values(coalitions, x_test)
         predictions = self.model(feature_values)
         weights = self._get_coalition_weights(coalitions)
 
-        lr = LinearRegression(fit_intercept=True)
-        lr.fit(coalitions, predictions, sample_weight=weights)
+        lr = ConstrainedLinearRegression(fit_intercept=True)
+        lr.fit(coalitions, predictions, sample_weight=weights, features_sum_constraint_equal=model_prediction)
         shap_values = pd.Series(data=lr.coef_, index=self.X.columns)
         shap_values["avg_prediction"] = lr.intercept_
         return shap_values
@@ -91,5 +93,5 @@ class SHAPExplainer:
         """
         Calculates SHAP values of multiple samples in `X`
         """
-        shap_values = X.apply(self._explain_sample, axis=1)
+        shap_values = X.apply(lambda row: self._explain_sample(np.array(row.tolist())), axis=1)
         return shap_values

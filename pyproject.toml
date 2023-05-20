@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = 'tinyshap'
-version = '0.0.5'
+version = '0.0.6'
 description = 'Minimal implementation of approximate Kernel SHAP algorithm'
 readme = 'README.md'
 authors = [
@@ -15,6 +15,7 @@ requires-python = '>=3.7'
 dependencies = [
   "pandas>=1.4.0",
   "scikit-learn>=1.1.1",
+  "constrainedlr>=0.0.8"
 ]
 classifiers = [
     'Development Status :: 3 - Alpha',

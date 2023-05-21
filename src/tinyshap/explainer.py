@@ -84,7 +84,7 @@ class SHAPExplainer:
         weights = self._get_coalition_weights(coalitions)
 
         lr = ConstrainedLinearRegression(fit_intercept=True)
-        lr.fit(coalitions, predictions, sample_weight=weights, features_sum_constraint_equal=model_prediction)
+        lr.fit(coalitions, predictions, sample_weight=weights, coefficients_sum_constraint=model_prediction)
         shap_values = pd.Series(data=lr.coef_, index=self.X.columns)
         shap_values["avg_prediction"] = lr.intercept_
         return shap_values

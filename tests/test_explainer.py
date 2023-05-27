@@ -71,3 +71,11 @@ def test_shap_values():
     assert shap_values.shape[0] == X_test.shape[0]
     assert shap_values.shape[1] == X_test.shape[1] + 1
     assert np.allclose(shap_values.sum(axis=1).values, explainer.model(X_test), rtol=0.01)
+
+
+def test_sign_constraints():
+    explainer = SHAPExplainer(model.predict, X=X_train_summary)
+    shap_values = explainer.shap_values(X_test, sign_constraints={0: -1, 1: 1})
+
+    assert all((shap_values.iloc[:, 0] < 1e-5).tolist())
+    assert all((shap_values.iloc[:, 1] > -1e-5).tolist())

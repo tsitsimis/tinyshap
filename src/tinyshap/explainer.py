@@ -70,7 +70,7 @@ class SHAPExplainer:
         weights = weights.values
         return weights
 
-    def _explain_sample(self, x_test: np.ndarray) -> pd.Series:
+    def _explain_sample(self, x_test: np.ndarray, sign_constraints: dict = {}) -> pd.Series:
         """
         Calculates SHAP values of a single sample using approximate KernelSHAP
         """
@@ -83,15 +83,21 @@ class SHAPExplainer:
         predictions = self.model(feature_values)
         weights = self._get_coalition_weights(coalitions)
 
-        lr = ConstrainedLinearRegression(fit_intercept=True)
-        lr.fit(coalitions, predictions, sample_weight=weights, coefficients_sum_constraint=model_prediction)
+        lr = ConstrainedLinearRegression(fit_intercept=False)
+        lr.fit(
+            coalitions,
+            predictions,
+            sample_weight=weights,
+            coefficients_sum_constraint=model_prediction,
+            coefficients_sign_constraints=sign_constraints,
+        )
         shap_values = pd.Series(data=lr.coef_, index=self.X.columns)
-        shap_values["avg_prediction"] = lr.intercept_
+        shap_values["avg_prediction"] = 0  # lr.intercept_
         return shap_values
 
-    def shap_values(self, X: pd.DataFrame) -> pd.DataFrame:
+    def shap_values(self, X: pd.DataFrame, sign_constraints: dict = {}) -> pd.DataFrame:
         """
         Calculates SHAP values of multiple samples in `X`
         """
-        shap_values = X.apply(lambda row: self._explain_sample(np.array(row.tolist())), axis=1)
+        shap_values = X.apply(lambda row: self._explain_sample(np.array(row.tolist()), sign_constraints), axis=1)
         return shap_values
